@@ -978,16 +978,31 @@ function copyEntryFence(id, btn) {
     const fenceLang = lang === 'plaintext' ? '' : lang;
     navigator.clipboard.writeText('```' + fenceLang + '\n' + item.rawCode + '\n```').then(() => flashIcon(btn)).catch(() => {});
 }
+function triggerDownload(content, filename) {
+    const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.rel = 'noopener';
+    a.style.position = 'fixed';
+    a.style.left = '-9999px';
+    document.body.appendChild(a);
+    a.click();
+    // Appending to the DOM and delaying the revoke avoids a common bug where some
+    // browsers silently drop the download if the <a> is detached or the object URL
+    // is revoked before the click has actually been processed.
+    setTimeout(() => {
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    }, 1000);
+}
 function downloadEntry(id) {
     const item = findEntry(id); if (!item) return;
     const lang = effectiveLangId(item);
     const ext = LANGS[lang].ext;
     const name = (item.name && item.name.trim()) ? item.name.trim().replace(/[\\/:*?"<>|]/g, '_') : ('snippet_' + item.id);
-    const blob = new Blob([item.rawCode], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url; a.download = name + '.' + ext; a.click();
-    URL.revokeObjectURL(url);
+    triggerDownload(item.rawCode, name + '.' + ext);
 }
 
 function handleFileUpload(files) {
@@ -1220,10 +1235,7 @@ function downloadPanel(panelId) {
     const nameInput = document.getElementById(panelId + 'Name');
     const name = (nameInput.value && nameInput.value.trim()) ? nameInput.value.trim().replace(/[\\/:*?"<>|]/g, '_') : panelId;
     const code = document.getElementById(panelId).value;
-    const blob = new Blob([code], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a'); a.href = url; a.download = name + '.' + ext; a.click();
-    URL.revokeObjectURL(url);
+    triggerDownload(code, name + '.' + ext);
 }
 function savePanelToViewer(panelId, btn) {
     const code = document.getElementById(panelId).value;
